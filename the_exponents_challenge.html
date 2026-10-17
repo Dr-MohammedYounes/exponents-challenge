@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Exponents Challenge - Live Online Exit Ticket</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        navy: { 950: '#050814', 900: '#0a0f1d', 800: '#111827', 700: '#1f293d' },
+                        gold: { 400: '#fbbf24', 500: '#f59e0b', 600: '#d97706' },
+                        cyan: { 400: '#22d3ee', 500: '#06b6d4' },
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Canvas Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <!-- MathJax for TeX rendering -->
+    <script>
+        window.MathJax = {
+            tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']] },
+            svg: { fontCache: 'global' },
+            startup: { typeset: false }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+    
+    <style>
+        body {
+            background-color: #050814;
+            color: #f3f4f6;
+            overflow-x: hidden;
+            user-select: none;
+        }
+        .glass-panel {
+            background: rgba(17, 24, 39, 0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .glass-panel-gold {
+            background: rgba(245, 158, 11, 0.1);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+        .text-glow {
+            text-shadow: 0 0 15px rgba(34, 211, 238, 0.5);
+        }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #0a0f1d; }
+        ::-webkit-scrollbar-thumb { background: #1f293d; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #374151; }
+    </style>
+</head>
+<body class="min-h-screen text-slate-100 font-sans antialiased">
+    <div id="root"></div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Environment variables or fallback default
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'exponents-live-exit-ticket';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' 
+            ? JSON.parse(__firebase_config) 
+            : {
+                apiKey: "AIzaSyDemoConfigForPreviewModeOnly",
+                authDomain: "exponents-demo.firebaseapp.com",
+                projectId: "exponents-demo",
+                storageBucket: "exponents-demo.appspot.com",
+                messagingSenderId: "1234567890",
+                appId: "1:1234567890:web:demo123456"
+            };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        window.FB = { app, auth, db, appId, signInAnonymously, signInWithCustomToken, onAuthStateChanged, doc, setDoc, getDoc, onSnapshot, collection, updateDoc };
+    </script>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef, useMemo } = React;
+
+        // Sound Effects System
+        class AudioController {
+            constructor() {
+                this.ctx = null;
+                this.muted = false;
+            }
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+            }
+            playBeep(freq = 440, type = 'sine', duration = 0.15, volume = 0.1) {
+                if (this.muted) return;
+                try {
+                    this.init();
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = type;
+                    osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                    gain.gain.setValueAtTime(volume, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.00001, this.ctx.currentTime + duration);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + duration);
+                } catch(e) {}
+            }
+            playSuccess() {
+                if (this.muted) return;
+                const notes = [523.25, 659.25, 783.99, 1046.50];
+                notes.forEach((freq, idx) => setTimeout(() => this.playBeep(freq, 'triangle', 0.2, 0.15), idx * 80));
+            }
+            playTick() { this.playBeep(800, 'sine', 0.03, 0.02); }
+        }
+        const audio = new AudioController();
+
+        // Standardized Lesson Content for Grade 9 Reveal Algebra 1
+        const INITIAL_LESSONS = [
+            {
+                day: 1,
+                title: "DAY 1 – Product of Powers",
+                objective: "Find products of monomials using the Product of Powers Property.",
+                reflection: "What happens to exponents when you multiply powers with the same base?",
+                questions: [
+                    { id: "q1", prompt: "Simplify the monomial expression:", math: "(3x^2)(4x^5)", answer: "12x^7", reasoning: "Multiply coefficients: 3 * 4 = 12. Add exponents for same base x: 2 + 5 = 7." },
+                    { id: "q2", prompt: "Simplify the monomial expression:", math: "(-2a^3)(5a^4)", answer: "-10a^7", reasoning: "Multiply coefficients: (-2) * 5 = -10. Add exponents: 3 + 4 = 7." },
+                    { id: "q3", prompt: "Simplify the algebraic expression:", math: "(2m^2n^3)(-3mn^2)", answer: "-6m^3n^5", reasoning: "Coefficients: 2 * (-3) = -6. Powers: m^(2+1)=m^3 and n^(3+2)=n^5." },
+                    { id: "q4", prompt: "Simplify the expression completely:", math: "(7p^2q)(2p^3q^4)", answer: "14p^5q^5", reasoning: "Coefficients: 7 * 2 = 14. Variable exponents: p^(2+3)=p^5, q^(1+4)=q^5." },
+                    { id: "q5", prompt: "Pre-AP Challenge Question:", math: "\\text{If } x^m \\cdot x^3 = x^9, \\text{ find } m.", answer: "6", reasoning: "By Product of Powers, x^(m+3) = x^9. Therefore m + 3 = 9 => m = 6." }
+                ]
+            },
+            {
+                day: 2,
+                title: "DAY 2 – Scientific Notation",
+                objective: "Multiply numbers in scientific notation and apply exponent properties.",
+                reflection: "Why must scientific notation always have a coefficient between 1 and 10?",
+                questions: [
+                    { id: "q1", prompt: "Calculate and write in scientific notation:", math: "(2.5 \\times 10^3)(4 \\times 10^2)", answer: "1*10^6", reasoning: "Multiply coefficients: 2.5 * 4 = 10. Add powers: 10^(3+2) = 10^5. Convert 10 * 10^5 = 1 * 10^6." },
+                    { id: "q2", prompt: "Calculate and write in scientific notation:", math: "(3.2 \\times 10^4)(5 \\times 10^3)", answer: "1.6*10^8", reasoning: "3.2 * 5 = 16. Powers: 10^(4+3) = 10^7. Normalize: 1.6 * 10^8." },
+                    { id: "q3", prompt: "Calculate and write in scientific notation:", math: "(4.5 \\times 10^2)(3 \\times 10^5)", answer: "1.35*10^8", reasoning: "4.5 * 3 = 13.5. Powers: 10^7. Normalize: 1.35 * 10^8." },
+                    { id: "q4", prompt: "Calculate and write in scientific notation:", math: "(6 \\times 10^3)(2 \\times 10^6)", answer: "1.2*10^10", reasoning: "6 * 2 = 12. Powers: 10^9. Normalize: 1.2 * 10^10." },
+                    { id: "q5", prompt: "Pre-AP Challenge Question:", math: "\\text{Evaluate: } (3.6 \\times 10^5)(2.5 \\times 10^4)", answer: "9*10^9", reasoning: "3.6 * 2.5 = 9.0. Exponents: 5 + 4 = 9. Final answer: 9 * 10^9." }
+                ]
+            },
+            {
+                day: 3,
+                title: "DAY 3 – Power of a Power",
+                objective: "Simplify expressions using the Power of a Power Property.",
+                reflection: "Explain why exponents are multiplied when raising a power to a power.",
+                questions: [
+                    { id: "q1", prompt: "Simplify the power expression:", math: "(x^3)^4", answer: "x^12", reasoning: "Multiply inner and outer exponents: 3 * 4 = 12." },
+                    { id: "q2", prompt: "Simplify the power expression:", math: "(y^6)^2", answer: "y^12", reasoning: "Multiply exponents: 6 * 2 = 12." },
+                    { id: "q3", prompt: "Simplify the power expression:", math: "(a^3)^5", answer: "a^15", reasoning: "Multiply exponents: 3 * 5 = 15." },
+                    { id: "q4", prompt: "Simplify the power expression:", math: "(m^2)^7", answer: "m^14", reasoning: "Multiply exponents: 2 * 7 = 14." },
+                    { id: "q5", prompt: "Pre-AP Challenge Question:", math: "\\text{Evaluate if } (x^2)^5 = x^{32} \\text{ is True or False}", answer: "False", reasoning: "(x^2)^5 = x^10, whereas x^(2^5) = x^32. They are not equal." }
+                ]
+            },
+            {
+                day: 4,
+                title: "DAY 4 – Power of a Product",
+                objective: "Simplify expressions using the Power of a Product Property.",
+                reflection: "What common error do students make with coefficients in power of a product?",
+                questions: [
+                    { id: "q1", prompt: "Simplify the power expression:", math: "(2x)^3", answer: "8x^3", reasoning: "Raise both numerical coefficient and variable to 3: 2^3 * x^3 = 8x^3." },
+                    { id: "q2", prompt: "Simplify the algebraic expression:", math: "(-3y)^2", answer: "9y^2", reasoning: "(-3)^2 * y^2 = 9y^2." },
+                    { id: "q3", prompt: "Simplify completely:", math: "(4ab^2)^2", answer: "16a^2b^4", reasoning: "4^2 * a^2 * (b^2)^2 = 16a^2b^4." },
+                    { id: "q4", prompt: "Simplify completely:", math: "(-2m^2n)^3", answer: "-8m^6n^3", reasoning: "(-2)^3 * m^(2*3) * n^3 = -8m^6n^3." },
+                    { id: "q5", prompt: "Pre-AP Challenge Question:", math: "\\text{Are } 2(xy)^3 \\text{ and } (2xy)^3 \\text{ equivalent? (Yes/No)}", answer: "No", reasoning: "2(xy)^3 = 2x^3y^3, while (2xy)^3 = 8x^3y^3." }
+                ]
+            },
+            {
+                day: 5,
+                title: "DAY 5 – Area & Volume Applications",
+                objective: "Apply multiplication properties of exponents to real-world geometric concepts.",
+                reflection: "If the side length of a cube doubles, how many times greater is its volume?",
+                questions: [
+                    { id: "q1", prompt: "Area of Square (Side s = 5x):", math: "A = (5x)^2", answer: "25x^2", reasoning: "Area = (5x)^2 = 25x^2." },
+                    { id: "q2", prompt: "Volume of Cube (Side s = 2x^2):", math: "V = (2x^2)^3", answer: "8x^6", reasoning: "Volume = (2x^2)^3 = 8x^6." },
+                    { id: "q3", prompt: "Area of Rectangle (L = 3x^2, W = 4x^3):", math: "A = (3x^2)(4x^3)", answer: "12x^5", reasoning: "Area = 3*4 * x^(2+3) = 12x^5." },
+                    { id: "q4", prompt: "Total volume of 12 cubes with side s = 2x^2:", math: "V_{total} = 12 \\cdot (2x^2)^3", answer: "96x^6", reasoning: "1 cube volume = 8x^6. 12 cubes = 12 * 8x^6 = 96x^6." },
+                    { id: "q5", prompt: "Pre-AP Challenge Question:", math: "\\text{If square side doubles, area quadruples. True or False?}", answer: "True", reasoning: "New area = (2s)^2 = 4s^2, which is 4 times the original area." }
+                ]
+            }
+        ];
+
+        const MathDisplay = ({ tex, inline = false, className = "" }) => {
+            const containerRef = useRef(null);
+
+            useEffect(() => {
+                if (containerRef.current && window.MathJax && window.MathJax.typesetPromise) {
+                    containerRef.current.innerHTML = inline ? `$${tex}$` : `$$${tex}$$`;
+                    window.MathJax.typesetPromise([containerRef.current]).catch(err => console.error(err));
+                }
+            }, [tex, inline]);
+
+            return <span ref={containerRef} className={`inline-block ${className}`} />;
+        };
+
+        // Utility: Clean student inputs for robust match checking
+        const normalizeAnswer = (input = "") => {
+            return input
+                .toLowerCase()
+                .replace(/\s+/g, '')
+                .replace(/\*/g, '')
+                .replace(/\^/g, '')
+                .replace(/\\cdot/g, '')
+                .trim();
+        };
+
+        function ExponentsApp() {
+            // User & Authentication state
+            const [user, setUser] = useState(null);
+            const [role, setRole] = useState(null); // 'teacher' | 'student'
+            const [studentName, setStudentName] = useState('');
+            const [studentCode, setStudentCode] = useState('');
+
+            // App Screen State
+            const [screen, setScreen] = useState('welcome'); // 'welcome' | 'student_exit_ticket' | 'student_results' | 'teacher_dash'
+            const [selectedDay, setSelectedDay] = useState(1);
+            
+            // Live Firebase Sync State
+            const [sessionData, setSessionData] = useState({
+                activeDay: 1,
+                timerDuration: 300, // 5 minutes standard
+                status: 'waiting', // 'waiting' | 'active' | 'closed'
+                revealSolutions: false
+            });
+            const [submissions, setSubmissions] = useState({});
+
+            // Student Form State
+            const [answers, setAnswers] = useState({});
+            const [reasonings, setReasonings] = useState({});
+            const [studentTimeLeft, setStudentTimeLeft] = useState(300);
+            const [isSubmitted, setIsSubmitted] = useState(false);
+            const [privacyMode, setPrivacyMode] = useState(true);
+
+            // Firebase Initialization & Live Subscription
+            useEffect(() => {
+                if (!window.FB) return;
+                const { auth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, db, doc, onSnapshot } = window.FB;
+
+                const authenticate = async () => {
+                    try {
+                        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                            await signInWithCustomToken(auth, __initial_auth_token);
+                        } else {
+                            await signInAnonymously(auth);
+                        }
+                    } catch (e) {
+                        console.error("Auth error:", e);
+                    }
+                };
+
+                authenticate();
+
+                const unsubscribeAuth = onAuthStateChanged(auth, (usr) => {
+                    if (usr) setUser(usr);
+                });
+
+                return () => unsubscribeAuth();
+            }, []);
+
+            useEffect(() => {
+                if (!user || !window.FB) return;
+                const { db, appId, doc, collection, onSnapshot } = window.FB;
+
+                // Listen to central session document
+                const sessionRef = doc(db, 'artifacts', appId, 'public', 'data', 'session_state', 'current');
+                const unsubSession = onSnapshot(sessionRef, (snap) => {
+                    if (snap.exists()) {
+                        const data = snap.data();
+                        setSessionData(data);
+                        if (data.activeDay) setSelectedDay(data.activeDay);
+                    }
+                }, (err) => console.error("Session snapshot error:", err));
+
+                // Listen to student submissions collection
+                const submissionsRef = collection(db, 'artifacts', appId, 'public', 'data', 'submissions');
+                const unsubSubmissions = onSnapshot(submissionsRef, (snap) => {
+                    const subs = {};
+                    snap.forEach(docSnap => {
+                        subs[docSnap.id] = docSnap.data();
+                    });
+                    setSubmissions(subs);
+                }, (err) => console.error("Submissions error:", err));
+
+                return () => {
+                    unsubSession();
+                    unsubSubmissions();
+                };
+            }, [user]);
+
+            // Timer for student live session
+            useEffect(() => {
+                let interval = null;
+                if (screen === 'student_exit_ticket' && sessionData.status === 'active' && studentTimeLeft > 0 && !isSubmitted) {
+                    interval = setInterval(() => {
+                        setStudentTimeLeft(prev => {
+                            if (prev <= 10 && prev > 1) audio.playTick();
+                            return prev - 1;
+                        });
+                    }, 1000);
+                } else if (studentTimeLeft === 0 && !isSubmitted && screen === 'student_exit_ticket') {
+                    handleStudentSubmit();
+                }
+                return () => clearInterval(interval);
+            }, [screen, sessionData.status, studentTimeLeft, isSubmitted]);
+
+            const currentLesson = useMemo(() => INITIAL_LESSONS.find(l => l.day === selectedDay) || INITIAL_LESSONS[0], [selectedDay]);
+
+            const handleStudentJoin = (e) => {
+                e.preventDefault();
+                if (!studentName.trim()) return;
+                const code = studentCode.trim() || `STU-${Math.floor(100 + Math.random() * 900)}`;
+                setStudentCode(code);
+                setRole('student');
+                setStudentTimeLeft(sessionData.timerDuration || 300);
+                setScreen('student_exit_ticket');
+            };
+
+            const handleStudentSubmit = async () => {
+                if (isSubmitted || !user) return;
+
+                // Grade objective answers
+                let score = 0;
+                const itemResults = {};
+
+                currentLesson.questions.forEach((q) => {
+                    const studentAns = answers[q.id] || "";
+                    const isExact = normalizeAnswer(studentAns) === normalizeAnswer(q.answer);
+                    if (isExact) score += 20; // 20 points per question (Total 100)
+                    itemResults[q.id] = {
+                        answer: studentAns,
+                        reasoning: reasonings[q.id] || "",
+                        isCorrect: isExact,
+                        teacherVerified: false
+                    };
+                });
+
+                const timeSpent = (sessionData.timerDuration || 300) - studentTimeLeft;
+
+                const payload = {
+                    uid: user.uid,
+                    studentName: studentName.trim(),
+                    studentCode: studentCode || `STU-${Math.floor(100 + Math.random() * 900)}`,
+                    day: selectedDay,
+                    score,
+                    timeSpent,
+                    submittedAt: new Date().toISOString(),
+                    itemResults
+                };
+
+                setIsSubmitted(true);
+                audio.playSuccess();
+                confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+
+                try {
+                    const { db, appId, doc, setDoc } = window.FB;
+                    const subRef = doc(db, 'artifacts', appId, 'public', 'data', 'submissions', `${user.uid}_day${selectedDay}`);
+                    await setDoc(subRef, payload);
+                } catch (e) {
+                    console.error("Failed to post student response:", e);
+                }
+
+                setScreen('student_results');
+            };
+
+            // Teacher Actions
+            const updateTeacherSession = async (updates) => {
+                if (!user) return;
+                try {
+                    const { db, appId, doc, setDoc } = window.FB;
+                    const sessionRef = doc(db, 'artifacts', appId, 'public', 'data', 'session_state', 'current');
+                    await setDoc(sessionRef, { ...sessionData, ...updates }, { merge: true });
+                } catch (e) {
+                    console.error("Error updating session:", e);
+                }
+            };
+
+            const verifyReasoning = async (subId, qId, pointsToAdd) => {
+                if (!user) return;
+                try {
+                    const { db, appId, doc, updateDoc } = window.FB;
+                    const targetSub = submissions[subId];
+                    if (!targetSub) return;
+
+                    const newScore = Math.min(100, (targetSub.score || 0) + pointsToAdd);
+                    const subRef = doc(db, 'artifacts', appId, 'public', 'data', 'submissions', subId);
+                    
+                    await updateDoc(subRef, {
+                        score: newScore,
+                        [`itemResults.${qId}.teacherVerified`]: true
+                    });
+                } catch (e) {
+                    console.error("Verification error:", e);
+                }
+            };
+
+            const exportCSV = () => {
+                let csv = "Student Code,Student Name,Day,Score,Time Spent (sec),Submitted At\n";
+                Object.values(submissions).forEach(s => {
+                    csv += `"${s.studentCode}","${s.studentName}",${s.day},${s.score},${s.timeSpent},"${s.submittedAt}"\n`;
+                });
+                const blob = new Blob([csv], { type: 'text/csv' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `exponents_exit_ticket_day${selectedDay}.csv`;
+                a.click();
+            };
+
+            const HeaderBar = () => (
+                <header className="w-full glass-panel border-b border-slate-700/60 px-6 py-4 flex flex-col md:flex-row items-center justify-between gap-4 sticky top-0 z-40 shadow-xl">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center font-black text-xl text-white shadow-lg shadow-cyan-500/20">
+                            X
+                        </div>
+                        <div>
+                            <h1 className="font-extrabold text-lg md:text-xl tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-200 to-purple-400">
+                                THE EXPONENTS CHALLENGE
+                            </h1>
+                            <p className="text-xs text-slate-400 flex items-center gap-2">
+                                <span>Grade 9 Reveal Algebra 1</span> • 
+                                <span className="text-amber-400 font-semibold">Dr. Mohammed Younes</span>
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 bg-slate-900/90 p-1.5 rounded-xl border border-slate-800">
+                        <button 
+                            onClick={() => setScreen('welcome')} 
+                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${screen === 'welcome' ? 'bg-cyan-500 text-slate-950 font-bold' : 'text-slate-300 hover:text-white'}`}
+                        >
+                            Student Join
+                        </button>
+                        <button 
+                            onClick={() => { setRole('teacher'); setScreen('teacher_dash'); }} 
+                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${screen === 'teacher_dash' ? 'bg-purple-600 text-white font-bold' : 'text-slate-300 hover:text-white'}`}
+                        >
+                            Teacher Dashboard
+                        </button>
+                    </div>
+                </header>
+            );
+
+            if (screen === 'welcome') {
+                return (
+                    <div className="min-h-screen flex flex-col bg-navy-950 text-slate-100">
+                        <HeaderBar />
+                        <main className="flex-1 max-w-4xl w-full mx-auto p-6 flex flex-col items-center justify-center gap-8">
+                            
+                            <div className="text-center space-y-3">
+                                <span className="px-4 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-xs font-bold tracking-wide uppercase">
+                                    ⚡ Live Classroom Exit Ticket
+                                </span>
+                                <h2 className="text-3xl md:text-5xl font-black text-white leading-tight">
+                                    Multiplication Properties of Exponents
+                                </h2>
+                                <p className="text-slate-400 text-sm max-w-lg mx-auto">
+                                    Enter your details below to join the 5-minute online Live Exit Ticket competition.
+                                </p>
+                            </div>
+
+                            <div className="w-full max-w-md glass-panel p-8 rounded-3xl border border-slate-800 bg-slate-900/90 shadow-2xl space-y-5">
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="text-xs font-bold uppercase text-slate-400">Student Name / Display Name</label>
+                                        <input 
+                                            type="text"
+                                            required
+                                            placeholder="e.g. Alex Smith"
+                                            value={studentName}
+                                            onChange={e => setStudentName(e.target.value)}
+                                            className="w-full mt-1.5 bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-sm text-white font-semibold focus:outline-none focus:border-cyan-500"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-bold uppercase text-slate-400">Student Code (Optional for Privacy)</label>
+                                        <input 
+                                            type="text"
+                                            placeholder="e.g. STU-104 (Auto-assigned if empty)"
+                                            value={studentCode}
+                                            onChange={e => setStudentCode(e.target.value)}
+                                            className="w-full mt-1.5 bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-300 focus:outline-none focus:border-cyan-500"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
+                                    <div className="text-xs text-amber-400 font-bold flex items-center justify-between">
+                                        <span>CURRENT CLASS SESSION:</span>
+                                        <span className="uppercase text-cyan-400 font-black">DAY {sessionData.activeDay}</span>
+                                    </div>
+                                    <p className="text-xs text-slate-400">
+                                        {INITIAL_LESSONS.find(l => l.day === sessionData.activeDay)?.title}
+                                    </p>
+                                </div>
+
+                                <button 
+                                    onClick={handleStudentJoin}
+                                    disabled={!studentName.trim()}
+                                    className="w-full py-3.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-black text-sm tracking-wider transition shadow-lg shadow-cyan-500/20 disabled:opacity-40"
+                                >
+                                    ENTER LIVE EXIT TICKET →
+                                </button>
+                            </div>
+
+                        </main>
+                    </div>
+                );
+            }
+
+            if (screen === 'student_exit_ticket') {
+                const dayLesson = INITIAL_LESSONS.find(l => l.day === sessionData.activeDay) || INITIAL_LESSONS[0];
+
+                return (
+                    <div className="min-h-screen flex flex-col bg-navy-950 text-slate-100">
+                        <HeaderBar />
+                        
+                        <main className="flex-1 max-w-4xl w-full mx-auto p-4 md:p-6 flex flex-col gap-6">
+                            
+                            {/* Exit Ticket Header */}
+                            <div className="glass-panel p-5 rounded-2xl border border-slate-800 flex flex-col md:flex-row items-center justify-between gap-4">
+                                <div>
+                                    <span className="text-xs font-bold text-cyan-400 uppercase tracking-widest">
+                                        {dayLesson.title}
+                                    </span>
+                                    <h2 className="text-lg font-extrabold text-white">
+                                        Individual Student Exit Ticket
+                                    </h2>
+                                    <p className="text-xs text-slate-400">Student: <span className="text-white font-semibold">{studentName}</span> ({studentCode})</p>
+                                </div>
+
+                                {/* Timer Badge */}
+                                <div className="flex items-center gap-3">
+                                    <div className={`px-4 py-2 rounded-xl font-black text-xl border flex items-center gap-2 ${studentTimeLeft <= 30 ? 'bg-red-500/20 text-red-400 border-red-500/50 animate-pulse' : 'bg-slate-950 text-cyan-400 border-cyan-500/30'}`}>
+                                        ⏱️ {Math.floor(studentTimeLeft / 60)}:{(studentTimeLeft % 60).toString().padStart(2, '0')}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Session status guard */}
+                            {sessionData.status === 'waiting' && (
+                                <div className="glass-panel p-8 rounded-2xl border border-amber-500/30 text-center space-y-3">
+                                    <span className="text-3xl">⏳</span>
+                                    <h3 className="text-lg font-bold text-amber-400">Waiting for Teacher to Start Session</h3>
+                                    <p className="text-xs text-slate-400">Please wait. Your teacher will start the countdown timer shortly on Zoom.</p>
+                                </div>
+                            )}
+
+                            {sessionData.status === 'closed' && (
+                                <div className="glass-panel p-8 rounded-2xl border border-red-500/30 text-center space-y-3">
+                                    <span className="text-3xl">🔒</span>
+                                    <h3 className="text-lg font-bold text-red-400">Submissions Closed</h3>
+                                    <p className="text-xs text-slate-400">The teacher has closed submissions for this Exit Ticket.</p>
+                                </div>
+                            )}
+
+                            {/* Questions Form */}
+                            {sessionData.status === 'active' && (
+                                <div className="space-y-6">
+                                    {dayLesson.questions.map((q, idx) => (
+                                        <div key={q.id} className="glass-panel p-6 rounded-2xl border border-slate-800 space-y-4">
+                                            <div className="flex items-center justify-between text-xs font-bold text-cyan-400">
+                                                <span>QUESTION {idx + 1} OF 5</span>
+                                                <span>20 POINTS</span>
+                                            </div>
+                                            <p className="text-sm text-slate-300 font-medium">{q.prompt}</p>
+                                            
+                                            <div className="py-4 px-6 rounded-xl bg-slate-950 border border-slate-800 text-center text-xl font-black text-cyan-300">
+                                                <MathDisplay tex={q.math} />
+                                            </div>
+
+                                            <div className="space-y-3 pt-2">
+                                                <div>
+                                                    <label className="text-[10px] uppercase font-bold text-slate-400">Your Answer (Expression or Value):</label>
+                                                    <input 
+                                                        type="text"
+                                                        placeholder="e.g. 12x^7 or 1.6*10^8"
+                                                        value={answers[q.id] || ""}
+                                                        onChange={e => setAnswers({ ...answers, [q.id]: e.target.value })}
+                                                        className="w-full mt-1 bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white font-mono focus:outline-none focus:border-cyan-500"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="text-[10px] uppercase font-bold text-slate-400">Step-by-Step Reasoning / Justification:</label>
+                                                    <textarea 
+                                                        rows="2"
+                                                        placeholder="Explain how you applied the exponent rule..."
+                                                        value={reasonings[q.id] || ""}
+                                                        onChange={e => setReasonings({ ...reasonings, [q.id]: e.target.value })}
+                                                        className="w-full mt-1 bg-slate-950 border border-slate-700 rounded-xl px-4 py-2 text-xs text-slate-300 focus:outline-none focus:border-cyan-500"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+
+                                    <button 
+                                        onClick={handleStudentSubmit}
+                                        className="w-full py-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-black text-base shadow-xl transition active:scale-98"
+                                    >
+                                        SUBMIT EXIT TICKET NOW
+                                    </button>
+                                </div>
+                            )}
+
+                        </main>
+                    </div>
+                );
+            }
+
+            if (screen === 'student_results') {
+                const dayLesson = INITIAL_LESSONS.find(l => l.day === selectedDay) || INITIAL_LESSONS[0];
+                const mySub = submissions[`${user?.uid}_day${selectedDay}`];
+
+                return (
+                    <div className="min-h-screen flex flex-col bg-navy-950 text-slate-100">
+                        <HeaderBar />
+                        <main className="flex-1 max-w-4xl w-full mx-auto p-6 flex flex-col gap-6">
+                            
+                            <div className="glass-panel p-8 rounded-3xl border border-emerald-500/30 text-center space-y-4">
+                                <span className="text-4xl">🎉</span>
+                                <h2 className="text-2xl md:text-3xl font-black text-white">
+                                    Exit Ticket Submitted Successfully!
+                                </h2>
+                                <div className="inline-flex items-center gap-3 px-6 py-2 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 font-extrabold text-xl">
+                                    <span>Calculated Score:</span>
+                                    <span>{mySub ? mySub.score : 0} / 100 PTS</span>
+                                </div>
+                            </div>
+
+                            {/* Detailed Solutions if enabled by teacher */}
+                            {sessionData.revealSolutions ? (
+                                <div className="space-y-4">
+                                    <h3 className="text-lg font-bold text-cyan-400">Step-by-Step Worked Solutions</h3>
+                                    {dayLesson.questions.map((q, idx) => {
+                                        const result = mySub?.itemResults?.[q.id];
+                                        return (
+                                            <div key={q.id} className="glass-panel p-6 rounded-2xl border border-slate-800 space-y-3">
+                                                <div className="flex items-center justify-between text-xs font-bold">
+                                                    <span className="text-slate-400">Question {idx + 1}</span>
+                                                    <span className={result?.isCorrect ? 'text-emerald-400' : 'text-rose-400'}>
+                                                        {result?.isCorrect ? '✓ Correct Answer' : '✗ Incorrect or Format Difference'}
+                                                    </span>
+                                                </div>
+                                                <div className="text-sm font-bold text-white"><MathDisplay tex={q.math} /></div>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs pt-2 border-t border-slate-800">
+                                                    <div className="p-3 rounded-xl bg-slate-950 border border-slate-800">
+                                                        <span className="text-slate-500 font-bold block mb-1">Your Submitted Answer:</span>
+                                                        <span className="text-white font-mono">{result?.answer || "No response"}</span>
+                                                    </div>
+                                                    <div className="p-3 rounded-xl bg-emerald-950/30 border border-emerald-500/30">
+                                                        <span className="text-emerald-400 font-bold block mb-1">Correct Answer & Rule:</span>
+                                                        <span className="text-emerald-200 font-bold"><MathDisplay tex={q.answer} inline={true} /></span>
+                                                        <p className="text-slate-300 mt-1"><MathDisplay tex={q.reasoning} inline={true} /></p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            ) : (
+                                <div className="glass-panel p-6 rounded-2xl border border-slate-800 text-center space-y-2">
+                                    <p className="text-xs text-slate-400">
+                                        🔒 Solutions will be displayed here once your teacher enables solution review on Zoom.
+                                    </p>
+                                </div>
+                            )}
+
+                        </main>
+                    </div>
+                );
+            }
+
+            if (screen === 'teacher_dash') {
+                const daySubmissions = Object.values(submissions).filter(s => s.day === selectedDay);
+                const avgScore = daySubmissions.length ? Math.round(daySubmissions.reduce((acc, curr) => acc + (curr.score || 0), 0) / daySubmissions.length) : 0;
+
+                // Sort for live leaderboard
+                const leaderboard = [...daySubmissions].sort((a, b) => {
+                    if (b.score !== a.score) return b.score - a.score;
+                    return (a.timeSpent || 0) - (b.timeSpent || 0); // Tie breaker: faster time
+                });
+
+                return (
+                    <div className="min-h-screen flex flex-col bg-navy-950 text-slate-100">
+                        <HeaderBar />
+
+                        <main className="flex-1 max-w-7xl w-full mx-auto p-6 flex flex-col gap-6">
+                            
+                            {/* Live Teacher Controls */}
+                            <div className="glass-panel p-6 rounded-3xl border border-purple-500/30 bg-purple-950/10 flex flex-col lg:flex-row items-center justify-between gap-6">
+                                <div>
+                                    <span className="text-xs font-bold text-purple-400 tracking-wider uppercase">
+                                        Zoom Live Controller
+                                    </span>
+                                    <h2 className="text-2xl font-black text-white">
+                                        Exit Ticket Control Center
+                                    </h2>
+                                    <p className="text-xs text-slate-400 mt-1">
+                                        Select lesson day, adjust live countdown, and control live student permissions.
+                                    </p>
+                                </div>
+
+                                <div className="flex flex-wrap items-center gap-3">
+                                    {/* Select Day */}
+                                    <select 
+                                        value={selectedDay}
+                                        onChange={e => {
+                                            const day = Number(e.target.value);
+                                            setSelectedDay(day);
+                                            updateTeacherSession({ activeDay: day });
+                                        }}
+                                        className="bg-slate-900 border border-slate-700 text-white rounded-xl px-3 py-2 text-xs font-bold focus:outline-none"
+                                    >
+                                        {[1,2,3,4,5].map(d => (
+                                            <option key={d} value={d}>Day {d} Exit Ticket</option>
+                                        ))}
+                                    </select>
+
+                                    {/* Session Controls */}
+                                    {sessionData.status !== 'active' ? (
+                                        <button 
+                                            onClick={() => updateTeacherSession({ status: 'active' })}
+                                            className="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs shadow-lg"
+                                        >
+                                            ▶️ Start Live Session
+                                        </button>
+                                    ) : (
+                                        <button 
+                                            onClick={() => updateTeacherSession({ status: 'closed' })}
+                                            className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-black text-xs shadow-lg"
+                                        >
+                                            🔒 Lock Submissions
+                                        </button>
+                                    )}
+
+                                    <button 
+                                        onClick={() => updateTeacherSession({ revealSolutions: !sessionData.revealSolutions })}
+                                        className={`px-4 py-2.5 rounded-xl font-bold text-xs border transition ${sessionData.revealSolutions ? 'bg-cyan-500 text-slate-950 border-cyan-400' : 'bg-slate-900 text-cyan-400 border-cyan-500/30'}`}
+                                    >
+                                        {sessionData.revealSolutions ? "👁️ Solutions Public" : "🙈 Reveal Solutions to Class"}
+                                    </button>
+
+                                    <button 
+                                        onClick={() => setPrivacyMode(!privacyMode)}
+                                        className={`px-4 py-2.5 rounded-xl font-bold text-xs border transition ${privacyMode ? 'bg-amber-500/20 text-amber-400 border-amber-500/40' : 'bg-slate-900 text-slate-300 border-slate-700'}`}
+                                    >
+                                        {privacyMode ? "🕵️ Privacy Mode ON" : "👤 Public Names"}
+                                    </button>
+
+                                    <button onClick={exportCSV} className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs">
+                                        📊 Export CSV
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Class Summary Cards */}
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                <div className="glass-panel p-5 rounded-2xl border border-slate-800">
+                                    <span className="text-xs text-slate-400 uppercase font-bold">Submissions</span>
+                                    <div className="text-3xl font-black text-white mt-1">{daySubmissions.length}</div>
+                                </div>
+                                <div className="glass-panel p-5 rounded-2xl border border-slate-800">
+                                    <span className="text-xs text-slate-400 uppercase font-bold">Class Average</span>
+                                    <div className="text-3xl font-black text-cyan-400 mt-1">{avgScore}%</div>
+                                </div>
+                                <div className="glass-panel p-5 rounded-2xl border border-slate-800">
+                                    <span className="text-xs text-slate-400 uppercase font-bold">Active Lesson</span>
+                                    <div className="text-sm font-bold text-amber-400 mt-2 truncate">Day {selectedDay} – Exponent Rules</div>
+                                </div>
+                                <div className="glass-panel p-5 rounded-2xl border border-slate-800">
+                                    <span className="text-xs text-slate-400 uppercase font-bold">Live Status</span>
+                                    <div className="text-sm font-bold text-emerald-400 mt-2 uppercase">{sessionData.status}</div>
+                                </div>
+                            </div>
+
+                            {/* Main Content Split: Live Leaderboard + Student Roster Review */}
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                
+                                {/* Live Leaderboard Column */}
+                                <div className="glass-panel p-6 rounded-3xl border border-slate-800 space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <h3 className="font-bold text-lg text-white flex items-center gap-2">
+                                            <span>🏆</span> Live Leaderboard
+                                        </h3>
+                                        <span className="text-[10px] text-slate-400">Tiebreaker: Completion Speed</span>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        {leaderboard.length === 0 ? (
+                                            <p className="text-xs text-slate-500 py-4 text-center">No student responses submitted yet for Day {selectedDay}.</p>
+                                        ) : (
+                                            leaderboard.map((sub, idx) => (
+                                                <div key={sub.uid || idx} className="p-3 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between">
+                                                    <div className="flex items-center gap-3">
+                                                        <span className={`w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center ${idx === 0 ? 'bg-gold-500 text-slate-950' : 'bg-slate-800 text-slate-300'}`}>
+                                                            {idx + 1}
+                                                        </span>
+                                                        <div>
+                                                            <div className="text-xs font-bold text-white">
+                                                                {privacyMode ? sub.studentCode : sub.studentName}
+                                                            </div>
+                                                            <div className="text-[10px] text-slate-500">{sub.timeSpent}s elapsed</div>
+                                                        </div>
+                                                    </div>
+                                                    <span className="text-base font-black text-cyan-400">{sub.score} pts</span>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Student Detailed Roster & Manual Verification Column */}
+                                <div className="lg:col-span-2 glass-panel p-6 rounded-3xl border border-slate-800 space-y-4">
+                                    <h3 className="font-bold text-lg text-white">
+                                        Submitted Student Responses & Verification
+                                    </h3>
+
+                                    <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
+                                        {daySubmissions.length === 0 ? (
+                                            <p className="text-xs text-slate-500 py-8 text-center">Waiting for live student submissions...</p>
+                                        ) : (
+                                            daySubmissions.map((sub) => (
+                                                <div key={sub.uid} className="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-3">
+                                                    <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                                                        <div>
+                                                            <span className="text-sm font-bold text-white">{sub.studentName}</span>
+                                                            <span className="text-xs text-slate-400 ml-2">({sub.studentCode})</span>
+                                                        </div>
+                                                        <div className="text-sm font-black text-emerald-400">
+                                                            Score: {sub.score} / 100
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="grid grid-cols-1 gap-2">
+                                                        {currentLesson.questions.map((q, qidx) => {
+                                                            const res = sub.itemResults?.[q.id];
+                                                            const key = `${sub.uid}_day${selectedDay}`;
+                                                            return (
+                                                                <div key={q.id} className="p-3 rounded-xl bg-slate-950 border border-slate-800 flex flex-col md:flex-row items-start md:items-center justify-between gap-2 text-xs">
+                                                                    <div className="space-y-1">
+                                                                        <span className="font-bold text-cyan-400">Q{qidx + 1}: </span>
+                                                                        <span className="text-slate-300 font-mono">{res?.answer || "No response"}</span>
+                                                                        {res?.reasoning && (
+                                                                            <p className="text-slate-400 italic text-[11px]">Reasoning: "{res.reasoning}"</p>
+                                                                        )}
+                                                                    </div>
+
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className={res?.isCorrect ? 'text-emerald-400 font-bold' : 'text-rose-400 font-bold'}>
+                                                                            {res?.isCorrect ? '✓ Auto-Correct (+20)' : '✗ Incorrect (+0)'}
+                                                                        </span>
+                                                                        {!res?.isCorrect && !res?.teacherVerified && (
+                                                                            <button 
+                                                                                onClick={() => verifyReasoning(key, q.id, 20)}
+                                                                                className="px-2.5 py-1 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-[10px] font-bold"
+                                                                            >
+                                                                                Override (+20)
+                                                                            </button>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                </div>
+
+                            </div>
+
+                        </main>
+                    </div>
+                );
+            }
+
+            return null;
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<ExponentsApp />);
+    </script>
+</body>
+</html>
